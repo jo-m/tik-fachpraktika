@@ -1,4 +1,4 @@
-/* gcc -Wall -O2 linked_list.c */
+// gcc -Wall -O2 -o linked_list linked_list.c && ./linked_list
 /* valgrind ./a.out */
 
 #include <stdio.h>
@@ -35,17 +35,42 @@ static void xfree(void *ptr)
 
 static struct elem *init_list(size_t len)
 {
-	/* ... */
+	struct elem *first = NULL;
+	struct elem *prev = NULL;
+	struct elem *head = NULL;
+	for(int i = 0; i < len; i++) {
+		head = xmalloc(sizeof(struct elem));
+		if(NULL == first) {
+			first = head;
+		}
+		if(NULL != prev) {
+			prev->next = head;
+		}
+		head->pos = i + 1;
+		prev = head;
+	}
+	head->next = first;
+	return first;
 }
 
-static void clean_list(struct elem *head, size_t len)
+static void clean_list(struct elem *head)
 {
-	/* ... */
+	struct elem *first = head;
+	do {
+		struct elem *next = head->next;
+		xfree(head);
+		head = next;
+	} while(head != first);
 }
 
 static void traverse_list(struct elem *head, int times)
 {
-	/* ... */
+	for(int i = 0; i < times; i++) {
+		struct elem *first = head, *tip = head;
+		do {
+			printf("traverse %d\n", tip->pos);
+		} while(first != (tip = tip->next));
+	}
 }
 
 int main(void)
@@ -53,8 +78,9 @@ int main(void)
 	struct elem *head = NULL;
 	size_t len = 10;
 
-	/* ... */
+	head = init_list(len);
+	traverse_list(head, 2);
+	clean_list(head);
 
 	return 0;
 }
-
