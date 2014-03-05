@@ -12,3 +12,5 @@ barbershop: barbershop.o
 clean:
 	rm -f barbershop *.o
 
+test: all
+	./barbershop
