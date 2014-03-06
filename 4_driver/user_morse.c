@@ -9,6 +9,8 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 
+// gcc -o user_morse user_morse.c && sudo ./user_morse blah
+
 struct morse_item {
   uint8_t len;
   uint8_t code;
@@ -94,21 +96,30 @@ static void panic(const char *serror)
 static void led_on(int led)
 {
   /* Turn the led on */
-  /* ... */
+  ioctl(fd, KDSETLED, led);
 }
 
 static void led_off(void)
 {
-  /* Turn the led on */
-  /* ... */
+  /* Turn the leds off */
+  ioctl(fd, KDSETLED, 0);
 }
 
-static int validate(int ascii)
+static char validate(char ascii)
 {
   /* Check that the input character corresponds to one that is
    * available in the morse alphabet. validate must always return
    * a vaild one! */
-  /* ... */
+  const int offset = 32;
+  int alphabet_len = sizeof(alphabet) / sizeof(uint8_t) / 2;
+
+  if(ascii >= 97 && ascii <= 122)
+    ascii = ascii - 32;
+
+  if(ascii < offset || ascii >= offset + alphabet_len)
+    ascii = offset;
+
+  return ascii;
 }
 
 static void blink(int is_long)
@@ -116,15 +127,32 @@ static void blink(int is_long)
   /* Let the LED_NUM blink once, is_long = 1 -> it is a dash
    * is_long = 0 -> it is a dot; Use the led_on and led_off functions */
   /* ... */
+  printf("blink(%d)\n", is_long);
+  led_on(LED_NUM);
+  if(is_long == 1)
+    usleep(dash_len);
+  else
+    usleep(dot_len);
+  led_off();
 }
 
-static void morse_char(int ascii)
+static void morse_char(char ascii)
 {
   /* Morse the ascii character. Validate it first (not all ascii
    * characters are available in the morse alphabet) with the
    * function validate */
   /* The binary of morse_item.code corresponds to the morsecode.
    * Hint: use a shift operator and the blink function. */
+  int i = 0;
+  uint8_t len, code;
+
+  ascii = validate(ascii);
+  len = alphabet[ascii - 32].len;
+  code = alphabet[ascii - 32].code;
+
+  for(i = 0; i < len; i++) {
+    blink(code >> (len - 1 - i) & 1);
+  }
 }
 
 int main(int argc, char **argv)
@@ -138,10 +166,13 @@ int main(int argc, char **argv)
 
   /* Get a file descriptor, with which we can access the
    * keyboard ioctl(2) store it in fd */
-  /* ... */
+  fd = open("/dev/console", O_RDWR | O_NOCTTY);
+
+  if (-1 == fd)
+  printf("Error opening /dev/console\n", fd);
 
   /* Get the LEDs that are turned on and store them in initial_leds */
-  /* ... */
+  ioctl(fd, KDGETLED, &initial_leds);
 
   led_off();
 
@@ -156,7 +187,7 @@ int main(int argc, char **argv)
   /* Set LEDs to original state */
   /* Note: the vmware might fail in doing so, even if your code is
    * correct ... */
-  /* ... */
+  led_on(initial_leds);
 
   close(fd);
   return 0;
