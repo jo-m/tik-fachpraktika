@@ -12,13 +12,24 @@
 static void f(char **addr, size_t x, size_t y)
 {
 	/* Traverse data, method 1 */
-	/* ... */
+	// faster!
+	int i,j;
+	for(i = 0; i < x; i++) {
+		for(j = 0; j < y; j++) {
+			addr[i][j]++;
+		}
+	}
 }
 
 static void g(char **addr, size_t x, size_t y)
 {
+	int i,j;
 	/* Traverse data, method 2 */
-	/* ... */
+	for(j = 0; j < y; j++) {
+		for(i = 0; i < x; i++) {
+			addr[i][j]++;
+		}
+	}
 }
 
 int main(int argc, char **argv)
@@ -28,7 +39,7 @@ int main(int argc, char **argv)
 	int i;
 
 	if (argc != 2) {
-		printf("Usage: ./a.out <test-nr:0|1>\n");
+		printf("Usage: ./caching <test-nr:0|1>\n");
 		return -EIO;
 	}
 
