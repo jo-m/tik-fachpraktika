@@ -50,24 +50,39 @@ int main(void)
 	 * error handling! */
 
 	/* Make the key */
-	/* ... */
-	/* Connect to the segment (size is size of one integer) */
-	/* ... */
-	/* Attach to the segment */
-	/* ... */
+	key = ftok("producer.c", 'R');
+	if (key < 0)
+		panic("ftok error!");
+
+	shmid = shmget(key, sizeof(*shared_data), 0666 | IPC_CREAT);
+	if (shmid < 0)
+		panic("shmget error!");
+
+	shared_data = shmat(shmid, NULL, 0);
+	if (shared_data == (int *) (-1))
+		panic("Cannot attach to segment!");
+
 	printf("Consumer starts\n");
 	for (i = 0; i < sizeof(read) / sizeof(read[0]); ++i) {
 		/* Read value */
-		/* ... */
+		read[i] = *shared_data;
+
 		printf("Consumer read: %d\n", read[i]);
 		/* Notify producer that data has been read */
-		/* ... */
-		/* Wait for the next value */
-		/* ... */
+		*shared_data = SIGNAL;
 
+		/* Wait for the next value */
+		while (*shared_data == SIGNAL)
+			sleep(0);
 	}
 	/* Detach from segment */
-	/* ... */
+	ret = shmdt(shared_data);
+	if (ret < 0)
+		panic("Cannot detach from segment!");
+
+	ret = shmctl(shmid, IPC_RMID, 0);
+	if (ret < 0)
+		panic("Cannot mark segement for removal!");
 
 	test_data(read, sizeof(read) / sizeof(read[0]));
 	return 0;
