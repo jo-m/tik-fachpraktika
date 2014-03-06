@@ -1,0 +1,7 @@
+1. A new shared memory segment, with size equal to the value of size rounded up to a multiple of PAGE_SIZE, is created if key has the value IPC_PRIVATE or key isn't IPC_PRIVATE, no shared memory segment corresponding to key exists, and IPC_CREAT is specified in shmflg.
+2. If shmflg specifies both IPC_CREAT and IPC_EXCL and a shared memory segment already exists for key, then shmget() fails with errno set to EEXIST. (This is analogous to the effect of the combination O_CREAT | O_EXCL for open(2).)
+3. Unique key für das Segment
+4. Pfadname plus id (int)
+5. shmat
+6. shmat(int shmid, const void *shmaddr, int shmflg); --> shmid
+7. munmap und shm_unlink
