@@ -12,7 +12,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.ssh.forward_agent = true
 
   config.vm.provision :shell, inline: "sudo apt-get update"
-  config.vm.provision :shell, inline: "apt-get install -y make build-essential git zsh curl linux-headers-$(uname -r)"
+  config.vm.provision :shell, inline: "apt-get install -y make build-essential git zsh curl linux-headers-$(uname -r) libfuse-dev pkg-config"
   config.vm.provision :shell, privileged: false, inline: "git clone https://github.com/jo-m/joni-config.git /home/vagrant/.joni-config"
   config.vm.provision :shell, inline: "chsh -s '/usr/bin/zsh' vagrant"
   config.vm.provision :shell, privileged: false, inline: "/home/vagrant/.joni-config/setup.sh"
