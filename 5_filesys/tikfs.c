@@ -54,23 +54,9 @@ static int tikfs_file_type(const char *path, size_t *node)
   return ret;
 }
 
-static size_t get_node(const char *path) {
-  size_t i;
-  const char *ptr = path + 1; /* Omit '/' char */
-  if (strcmp(path, "/") == 0)
-    return -1;
-  for (i = 0; i < table_next; ++i) {
-    if (!strncmp(table[i].meta.key, ptr,
-           min(strlen(ptr), sizeof(table[i].meta.key)))) {
-      return i;
-    }
-  }
-  return -1;
-}
-
 static int tikfs_getattr(const char *path, struct stat *stbuf)
 {
-  size_t node = get_node(path);
+  size_t node;
 
   /* uid / gid */
   stbuf->st_uid = getuid();
@@ -122,9 +108,15 @@ static int tikfs_read(const char *path, char *buff, size_t size,
     return -EINVAL;
   while (flushing)
     sleep(0);
+
+  if(offset > table[node].meta.len)
+    return -EINVAL;
+  if(offset + size > table[node].meta.len)
+    size = table[node].meta.len - offset;
   rwing = 1;
-  /* read */
-  /* ... */
+
+  lseek(tikfs_fd, table[node].data + offset, SEEK_SET);
+  ret = read(tikfs_fd, buff, size);
 out:
   rwing = 0;
   return ret;
