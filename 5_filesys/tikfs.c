@@ -1,5 +1,8 @@
-// gcc -Wall `pkg-config fuse --cflags --libs` tikfs.c -o tikfs
-// ./tikfs <mntpoint> <tikfs.db> and fusermount -u <mntpoint>
+// ./tikdb create todo.db
+// ./tikdb add todo.db '25.02.2012' 'Watch new Dr Who episodes'
+// ./tikdb add todo.db '26.02.2012' 'Watch old Dr Who episodes'
+// gcc -Wall tikfs.c `pkg-config fuse --cflags --libs` -o tikfs && mkdir -p mnt && ./tikfs mnt todo.db
+// fusermount -u mnt
 
 #define _FILE_OFFSET_BITS 64
 #define FUSE_USE_VERSION 26
@@ -51,23 +54,51 @@ static int tikfs_file_type(const char *path, size_t *node)
   return ret;
 }
 
+static size_t get_node(const char *path) {
+  size_t i;
+  const char *ptr = path + 1; /* Omit '/' char */
+  if (strcmp(path, "/") == 0)
+    return -1;
+  for (i = 0; i < table_next; ++i) {
+    if (!strncmp(table[i].meta.key, ptr,
+           min(strlen(ptr), sizeof(table[i].meta.key)))) {
+      return i;
+    }
+  }
+  return -1;
+}
+
 static int tikfs_getattr(const char *path, struct stat *stbuf)
 {
-  size_t node;
+  size_t node = get_node(path);
+
   /* uid / gid */
-  /* ... */
+  stbuf->st_uid = getuid();
+  stbuf->st_gid = getgid();
+
   switch (tikfs_file_type(path, &node)) {
-  case TIK_ROOT:
-    /* mode, nlink, atime, mtime */
-    /* ... */
-    break;
-  case TIK_FILE:
-    /* mode, nlink, size, atime, mtime */
-    /* ... */
-    break;
-  case TIK_NONE:
-  default:
-    return -ENOENT;
+    case TIK_ROOT:
+      /* mode, atime, mtime */
+      stbuf->st_nlink = 1;
+      stbuf->st_mode = 0755 | S_IFDIR;
+      stbuf->st_atime = time(NULL);
+      stbuf->st_mtime = time(NULL);
+      break;
+    case TIK_FILE:
+      /* mode, nlink, size, atime, mtime */
+      if(node < 0) {
+        return -ENOENT;
+      }
+
+      stbuf->st_nlink = 2;
+      stbuf->st_mode = 0644 | S_IFREG;
+      stbuf->st_size = table[node].meta.len;
+      stbuf->st_atime = table[node].meta.ts_r;
+      stbuf->st_mtime = table[node].meta.ts_w;
+      break;
+    case TIK_NONE:
+    default:
+      return -ENOENT;
   }
   return 0;
 }
