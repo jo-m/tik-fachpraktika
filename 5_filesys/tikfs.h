@@ -36,6 +36,11 @@ enum {
   TIK_FILE,
 };
 
+enum {
+  TIK_CLEAN,
+  TIK_DIRTY,
+};
+
 struct tikfs_fnode {
   struct tikdb_datahdr meta;
   off_t data;

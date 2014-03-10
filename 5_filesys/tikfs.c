@@ -117,6 +117,7 @@ static int tikfs_read(const char *path, char *buff, size_t size,
 
   lseek(tikfs_fd, table[node].data + offset, SEEK_SET);
   ret = read(tikfs_fd, buff, size);
+  table[node].meta.ts_r = time(NULL);
 out:
   rwing = 0;
   return ret;
@@ -141,8 +142,32 @@ static int tikfs_write(const char *path, const char *buff, size_t size,
   while (flushing)
     sleep(0);
   rwing = 1;
-  /* write */
-  /* ... */
+  if(table[node].dirty == TIK_CLEAN) {
+    table[node].dirty = TIK_DIRTY;
+    table[node].cowlen = table[node].meta.len;
+    table[node].cowbuff = xmalloc(table[node].cowlen);
+
+    lseek(tikfs_fd, table[node].data, SEEK_SET);
+    ret = read(tikfs_fd, table[node].cowbuff, table[node].cowlen);
+
+    if(ret < table[node].cowlen) {
+      xfree(table[node].cowbuff);
+      table[node].cowlen = 0;
+      table[node].dirty = TIK_CLEAN;
+
+      size = -EIO;
+      goto out;
+    }
+  }
+
+  if(offset + size != table[node].cowlen) {
+    table[node].cowlen = offset + size;
+    table[node].cowbuff = xrealloc(table[node].cowbuff, table[node].cowlen);
+  }
+
+  memcpy(table[node].cowbuff + offset, buff, size);
+  table[node].meta.ts_w = time(NULL);
+out:
   rwing = 0;
   return size;
 }
@@ -197,7 +222,7 @@ static void tikfs_build_cache(void)
         table[table_next].meta.len == 0)
       goto die;
     table[table_next].data = lseek(tikfs_fd, 0, SEEK_CUR);
-    table[table_next].dirty = 0;
+    table[table_next].dirty = TIK_CLEAN;
     table[table_next].cowbuff = NULL;
     table[table_next].cowlen = 0;
     ret = lseek(tikfs_fd, table[table_next].meta.len, SEEK_CUR);
@@ -240,7 +265,7 @@ static void ____tikfs_flush_dirty_nodes_to_disc_dirty(size_t i)
   table[i].cowlen = 0;
   free(table[i].cowbuff);
   table[i].cowbuff = NULL;
-  table[i].dirty = 0;
+  table[i].dirty = TIK_CLEAN;
   table[i].data = lseek(tikfs_fd, 0, SEEK_CUR) - table[i].meta.len;
 }
 
@@ -274,7 +299,7 @@ static void __tikfs_flush_dirty_nodes_to_disc(size_t i_dirty, int tikfs_fd2,
 {
   size_t i;
   for (i = i_dirty; i < table_next; ++i) {
-    if (table[i].dirty) {
+    if (table[i].dirty == TIK_DIRTY) {
       ____tikfs_flush_dirty_nodes_to_disc_dirty(i);
       (*count)++;
     } else {
@@ -293,9 +318,9 @@ static void tikfs_flush_dirty_nodes_to_disc(void)
   flushing = 1;
   posix_fadvise(tikfs_fd, 0, 0, POSIX_FADV_SEQUENTIAL);
   for (i = 0; i < table_next; ++i) {
-    if (!table[i].dirty)
+    if (!table[i].dirty == TIK_DIRTY)
       continue;
-    if (table[i].dirty &&
+    if (table[i].dirty == TIK_DIRTY &&
         table[i].cowlen == table[i].meta.len) {
       lseek(tikfs_fd, table[i].data, SEEK_SET);
       ret = write(tikfs_fd, table[i].cowbuff,
@@ -303,12 +328,12 @@ static void tikfs_flush_dirty_nodes_to_disc(void)
       if (ret != table[i].cowlen)
         syslog(LOG_ERR, "disc flush error at node "
                "%zu, continuing\n", i);
-      table[i].dirty = 0;
+      table[i].dirty = TIK_CLEAN;
       table[i].cowlen = 0;
       free(table[i].cowbuff);
       table[i].cowbuff = NULL;
       count++;
-    } else if (table[i].dirty) {
+    } else if (table[i].dirty == TIK_DIRTY) {
       int tikfs_fd2;
       size_t ii;
       char *tmpfile = "/tmp/tikfs.fubar";
