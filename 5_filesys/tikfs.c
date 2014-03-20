@@ -1,8 +1,5 @@
-// ./tikdb create todo.db
-// ./tikdb add todo.db '25.02.2012' 'Watch new Dr Who episodes'
-// ./tikdb add todo.db '26.02.2012' 'Watch old Dr Who episodes'
-// gcc -Wall tikfs.c `pkg-config fuse --cflags --libs` -o tikfs && mkdir -p mnt && ./tikfs mnt todo.db
-// fusermount -u mnt
+// make all
+// make mount
 
 #define _FILE_OFFSET_BITS 64
 #define FUSE_USE_VERSION 26
@@ -76,9 +73,14 @@ static int tikfs_getattr(const char *path, struct stat *stbuf)
         return -ENOENT;
       }
 
+      if(table[node].dirty == TIK_CLEAN) {
+        stbuf->st_size = table[node].meta.len;
+      } else {
+        stbuf->st_size = table[node].cowlen;
+      }
+
       stbuf->st_nlink = 2;
       stbuf->st_mode = 0644 | S_IFREG;
-      stbuf->st_size = table[node].meta.len;
       stbuf->st_atime = table[node].meta.ts_r;
       stbuf->st_mtime = table[node].meta.ts_w;
       break;
@@ -102,6 +104,7 @@ static int tikfs_read(const char *path, char *buff, size_t size,
            off_t offset, struct fuse_file_info *fi)
 {
   size_t node;
+  size_t len;
   ssize_t ret = 0;
   (void) fi;
   if (tikfs_file_type(path, &node) != TIK_FILE)
@@ -109,16 +112,28 @@ static int tikfs_read(const char *path, char *buff, size_t size,
   while (flushing)
     sleep(0);
 
-  if(offset > table[node].meta.len)
+  if(table[node].dirty == TIK_CLEAN) {
+    len = table[node].meta.len;
+  } else {
+    len = table[node].cowlen;
+  }
+
+  if(offset > len)
     return -EINVAL;
-  if(offset + size > table[node].meta.len)
-    size = table[node].meta.len - offset;
+  if(offset + size > len)
+    size = len - offset;
   rwing = 1;
 
-  lseek(tikfs_fd, table[node].data + offset, SEEK_SET);
-  ret = read(tikfs_fd, buff, size);
+  if(table[node].dirty == TIK_CLEAN) {
+    lseek(tikfs_fd, table[node].data + offset, SEEK_SET);
+    ret = read(tikfs_fd, buff, size);
+  } else {
+    memcpy(buff, table[node].cowbuff + offset, size);
+    ret = size;
+  }
+
   table[node].meta.ts_r = time(NULL);
-out:
+
   rwing = 0;
   return ret;
 }
@@ -456,6 +471,7 @@ int main(int argc, char **argv)
     fprintf(stderr, "usage: tikfs <mntpoint> <tikdb>\n");
     exit(1);
   }
+
   for (i = 0; i < argc - 1; i++)
     fuse_opt_add_arg(&args, argv[i]);
   tikfs_disc = argv[argc - 1];

@@ -35,7 +35,7 @@ static int __create_db(char *name)
 static void create_db(char *name)
 {
   close(__create_db(name));
-  die();
+  exit(0);
 }
 
 static void check_db_hdr(int fd)
@@ -143,7 +143,7 @@ static void add_key_val(char *db, char *key, char *val, size_t vlen)
     fsync(fd);
     close(fd);
   }
-  die();
+  exit(0);
 }
 
 static void get_key_val(char *db, char *key)
@@ -177,7 +177,7 @@ static void get_key_val(char *db, char *key)
     memset(&hdr, 0, sizeof(hdr));
   }
   close(fd);
-  die();
+  exit(0);
 }
 
 int main(int argc, char**argv)
