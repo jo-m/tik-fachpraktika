@@ -36,8 +36,7 @@ static void server_main(int argc, char **argv)
 	one = 1;
 	setsockopt(lfd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof (one));
 
-	/* Binding of socket to port */
-	/* ... */
+	ret = bind(lfd, (struct sockaddr *) &saddr, sizeof(struct sockaddr_in));
 	if (ret < 0)
 		panic("Cannot bind socket!\n");
 
@@ -49,8 +48,7 @@ static void server_main(int argc, char **argv)
 		printf("Waiting for connection ...\n");
 
 		clen = sizeof(caddr);
-		/* Take a new connection */
-		/* ... */
+		nfd = accept(lfd, (struct sockaddr *) &caddr, &clen);
 		if (nfd < 0) {
 			whine("Error on accept!\n");
 			continue;
@@ -131,8 +129,8 @@ static void client_main(int argc, char **argv)
 	memcpy(&saddr.sin_addr.s_addr, sent->h_addr, sent->h_length);
 	saddr.sin_port = htons((uint16_t) atoi(argv[2]));
 
-	/* Connect to server */
-	/* ... */
+	ret = connect(fd, (struct sockaddr *) &saddr, sizeof(saddr));
+
 	if (ret < 0)
 		panic("Cannot connect to server!\n");
 	printf("Connection successful!\n");
