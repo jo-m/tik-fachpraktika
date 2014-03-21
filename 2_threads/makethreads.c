@@ -7,7 +7,7 @@
 #include <errno.h>
 #include <signal.h>
 
-// gcc -Wall -o makethreads makethreads.c && ./makethreads
+// gcc -Wall -o makethreads makethreads.c -lpthread && ./makethreads
 
 void handle_sigint(int signum)
 {
@@ -29,13 +29,14 @@ void *hello_thread(void *arg) {
 }
 
 int main(const int argc, char const **argv) {
+  int i;
   if(argc < 2) err_exit(1);
   const long numthreads = strtol(argv[1], NULL, 10);
   if(0 != errno) err_exit(2);
   pthread_t threadinfo;
 
-  for(int i = 0; i < numthreads; i++)
-  pthread_create(&threadinfo, NULL, hello_thread, (void *)i);
+  for(i = 0; i < numthreads; i++)
+    pthread_create(&threadinfo, NULL, hello_thread, (void *)i);
 
   signal(SIGINT, handle_sigint);
 
