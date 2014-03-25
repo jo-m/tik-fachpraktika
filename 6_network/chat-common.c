@@ -1,6 +1,3 @@
-#ifndef _TIKLIB_H_
-#define _TIKLIB_H_
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -18,36 +15,20 @@
 #include <errno.h>
 #include <signal.h>
 #include <ncurses.h>
+#include "chat-common.h"
 
-#ifndef min
-# define min(a, b)                         \
-  ({                                 \
-    typeof (a) _a = (a);       \
-    typeof (b) _b = (b);       \
-    _a < _b ? _a : _b;         \
-  })
-#endif /* min */
-#ifndef max
-# define max(a, b)                         \
-  ({                                 \
-    typeof (a) _a = (a);       \
-    typeof (b) _b = (b);       \
-    _a > _b ? _a : _b;         \
-  })
-#endif /* max */
-
-static void panic(const char *serror)
+void panic(const char *serror)
 {
   printf("%s", serror);
   exit(1);
 }
 
-static void whine(const char *serror)
+void whine(const char *serror)
 {
   printf("%s", serror);
 }
 
-static void *xzmalloc(size_t size)
+void *xzmalloc(size_t size)
 {
   void *ptr;
   if (size == 0)
@@ -60,7 +41,7 @@ static void *xzmalloc(size_t size)
 }
 
 /* from: Linux kernel */
-static int strnicmp(const char *s1, const char *s2, size_t len)
+int strnicmp(const char *s1, const char *s2, size_t len)
 {
   unsigned char c1, c2;
   if (!len)
@@ -81,7 +62,7 @@ static int strnicmp(const char *s1, const char *s2, size_t len)
 }
 
 /* from: Linux kernel */
-static size_t strlcat(char *dest, const char *src, size_t count)
+size_t strlcat(char *dest, const char *src, size_t count)
 {
   size_t dsize = strlen(dest);
   size_t len = strlen(src);
@@ -98,4 +79,17 @@ static size_t strlcat(char *dest, const char *src, size_t count)
   return res;
 }
 
-#endif
+ssize_t write_exact(int fd, void *buf, size_t len)
+{
+  register ssize_t num = 0, written;
+  while (len > 0) {
+    if ((written = write(fd, buf, len)) < 0)
+      continue;
+    if (!written)
+      return 0;
+    len -= written;
+    buf += written;
+    num += written;
+  }
+  return num;
+}

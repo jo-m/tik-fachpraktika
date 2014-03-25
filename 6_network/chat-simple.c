@@ -6,11 +6,39 @@
 #include <arpa/inet.h>
 #include <unistd.h>
 #include <netdb.h>
-#include "tiklib.h"
-
-#define LISTENQ		64
 
 // gcc -Wall -O2 chat-simple.c -o chat-simple -lncurses
+
+#define LISTENQ		64
+#define INIT_QSIZ (100*1024)
+
+#ifndef min
+# define min(a, b)                         \
+  ({                                 \
+    typeof (a) _a = (a);       \
+    typeof (b) _b = (b);       \
+    _a < _b ? _a : _b;         \
+  })
+#endif /* min */
+#ifndef max
+# define max(a, b)                         \
+  ({                                 \
+    typeof (a) _a = (a);       \
+    typeof (b) _b = (b);       \
+    _a > _b ? _a : _b;         \
+  })
+#endif /* max */
+
+static void panic(const char *serror)
+{
+  printf("%s", serror);
+  exit(1);
+}
+
+static void whine(const char *serror)
+{
+  printf("%s", serror);
+}
 
 static void server_main(int argc, char **argv)
 {
