@@ -230,7 +230,7 @@ static void server_main(int argc, char **argv)
   struct sockaddr_in saddr;
 
   if (argc == 1)
-    panic("Usage: chat server <port>\n");
+    panic("Usage: ./server <port>\n");
 
   lfd = socket(AF_INET, SOCK_STREAM, 0);
   if (lfd < 0)

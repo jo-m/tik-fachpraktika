@@ -85,10 +85,26 @@ static void client_main(int argc, char **argv)
 	ssize_t len;
 
 	if (argc < 3)
-		panic("Usage: chat client <ip/name> <port>\n");
+		panic("Usage: ./client <ip/name> <port>\n");
 
-	/* Connect to server, socket descriptor is 'fd' */
-	/* ... */
+	fd = socket(AF_INET, SOCK_STREAM, 0);
+	if (fd < 0)
+		panic("Cannot create socket!\n");
+
+	sent = gethostbyname(argv[1]);
+	if (!sent)
+		panic("No such host!\n");
+
+	memset(&saddr, 0, sizeof(saddr));
+	saddr.sin_family = AF_INET;
+	memcpy(&saddr.sin_addr.s_addr, sent->h_addr, sent->h_length);
+	saddr.sin_port = htons((uint16_t) atoi(argv[2]));
+
+	ret = connect(fd, (struct sockaddr *) &saddr, sizeof(saddr));
+
+	if (ret < 0)
+		panic("Cannot connect to server!\n");
+	printf("Connection successful!\n");
 
 	rlen = INIT_QSIZ;
 	rbuff = xzmalloc(INIT_QSIZ);
