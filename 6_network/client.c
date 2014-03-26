@@ -17,6 +17,8 @@
 #include <ncurses.h>
 #include "chat-common.h"
 
+#define READ_POLL_TIMEOUT_MS 100
+
 static struct eventset eset;
 
 static WINDOW *client_input_win, *client_board_win;
@@ -114,15 +116,24 @@ static void client_main(int argc, char **argv)
 	wbuff = xzmalloc(INIT_QSIZ);
 
 	/* Prepare polling */
-	/* ... */
+	rpoll.fd = fd;
+	rpoll.events = POLLIN | POLLPRI;
+	rpoll.revents = 0;
 
 	client_init_tui();
 	while ((ch = getch()) != KEY_F(9)) {
 		switch (ch) {
 		case ERR:
 			/* Implement poll, read data and post it to the board */
-			/* ... */
-			client_post_message("Poll not yet implemented!\n");
+			ret = poll(&rpoll, 1, READ_POLL_TIMEOUT_MS);
+			if(ret > 0) {
+				len = read(fd, rbuff, rlen);
+				if (len <= 0)
+					panic("Cannot read from server!\n");
+
+				rbuff[rlen - 1] = 0;
+				client_post_message(rbuff);
+			}
 			break;
 		case '\n':
 			wbuff[wlen - 1] = 0;
