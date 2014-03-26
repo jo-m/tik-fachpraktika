@@ -185,9 +185,20 @@ static void server_process_message_from(int fd)
 
 static void server_process_who(int fd)
 {
-  /* Message: 'who' */
-  /* List connected people (either IP or if available Alias) */
-  /* ... */
+  int i;
+  struct client *c;
+  for(i = 0; i <= eset.read.max; c = &eset.clients[++i]) {
+    if(FD_ISSET(i, &eset.read.fds) && c->active) {
+      server_write_fd_queue(fd, "<Server who cmd>: ");
+      server_write_fd_queue(fd, server_get_client_repr(i));
+      if(fd == i) {
+        server_write_fd_queue(fd, " (you)");
+      }
+      server_write_fd_queue(fd, "\n");
+    }
+  }
+  server_write_fd_queue(fd, "<Server who cmd>: -- End of List --\n");
+  server_schedule_write(fd);
 }
 
 static void server_process_private(int fd)
