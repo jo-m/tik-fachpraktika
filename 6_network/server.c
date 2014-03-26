@@ -224,7 +224,7 @@ static void server_process_message_from(int fd)
   int i;
   for (i = 0; i < FD_SETSIZE; ++i) {
     if (eset.clients[i].active) {
-      server_write_fd_queue(i, server_get_client_repr(i));
+      server_write_fd_queue(i, server_get_client_repr(fd));
       if(i == fd) {
         server_write_fd_queue(i, " (you) ");
       }
