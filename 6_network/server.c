@@ -154,17 +154,6 @@ static void server_schedule_write(int fd)
   server_flush_queued_data(fd);
 }
 
-// struct client {
-//   int active;
-//   struct sockaddr_in sin;
-//   char *outbuff;
-//   size_t out_len, out_used;
-//   char *inbuff;
-//   size_t in_len;
-//   int has_alias;
-//   char alias[32];
-// };
-
 static void server_process_alias(int fd)
 {
   int i;
@@ -207,7 +196,6 @@ static void server_process_alias(int fd)
   server_write_fd_queue(fd, alias);
   server_write_fd_queue(fd, ".");
   server_schedule_write(fd);
-
 }
 
 static char* server_get_client_repr(int fd) {
