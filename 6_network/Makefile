@@ -18,5 +18,8 @@ client: client.o chat-common.o
 server: server.o chat-common.o
 	$(CC) $(CFLAGS) -o server server.o chat-common.o -lncurses
 
+sv: server
+	./server 1337
+
 clean:
 	rm -f client server *.o
