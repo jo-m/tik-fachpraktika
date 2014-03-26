@@ -17,6 +17,10 @@
 #include <ncurses.h>
 #include "chat-common.h"
 
+#define  MAGIC_STR_WHO "\\who"
+#define  MAGIC_STR_ALIAS "\\alias "
+#define  MAGIC_STR_PRIVATE "@"
+
 struct fdvec {
   fd_set fds;
   void (*f[FD_SETSIZE])(int fd);
@@ -154,17 +158,23 @@ static void server_process_alias(int fd)
   /* ... */
 }
 
-static void server_process_broadcast(int fd)
+static char* server_get_client_repr(int fd) {
+  struct client *c = &eset.clients[fd];
+  if (c->has_alias) {
+    return c->alias;
+  } else {
+    return inet_ntoa(c->sin.sin_addr);
+  }
+}
+
+static void server_process_message_from(int fd)
 {
   int i;
   for (i = 0; i < FD_SETSIZE; ++i) {
-    if (eset.clients[i].active && i != fd) {
-      server_write_fd_queue(i, "From ");
-      if (eset.clients[fd].has_alias) {
-        server_write_fd_queue(i, eset.clients[fd].alias);
-      } else {
-        server_write_fd_queue(i,
-          inet_ntoa(eset.clients[fd].sin.sin_addr));
+    if (eset.clients[i].active) {
+      server_write_fd_queue(i, server_get_client_repr(i));
+      if(i == fd) {
+        server_write_fd_queue(i, " (you) ");
       }
       server_write_fd_queue(i, ": ");
       server_write_fd_queue(i, eset.clients[fd].inbuff);
@@ -199,16 +209,16 @@ static void server_process_client(int fd)
       perror("Error reading from client");
     server_disconnect_client(fd);
     return;
-  } else if (strlen(eset.clients[fd].inbuff) == strlen("who") &&
-       !strnicmp(eset.clients[fd].inbuff, "who", strlen("who"))) {
+  } else if (strlen(eset.clients[fd].inbuff) == strlen(MAGIC_STR_WHO) &&
+       !strnicmp(eset.clients[fd].inbuff, MAGIC_STR_WHO, strlen(MAGIC_STR_WHO))) {
     server_process_who(fd);
-  } else if (strlen(eset.clients[fd].inbuff) > strlen("alias ") &&
-       !strnicmp(eset.clients[fd].inbuff, "alias ", strlen("alias "))) {
+  } else if (strlen(eset.clients[fd].inbuff) > strlen(MAGIC_STR_ALIAS) &&
+       !strnicmp(eset.clients[fd].inbuff, MAGIC_STR_ALIAS, strlen(MAGIC_STR_ALIAS))) {
     server_process_alias(fd);
-  } else if (!strncmp(eset.clients[fd].inbuff, "@", strlen("@"))) {
+  } else if (!strncmp(eset.clients[fd].inbuff, MAGIC_STR_PRIVATE, strlen(MAGIC_STR_PRIVATE))) {
     server_process_private(fd);
   } else {
-    server_process_broadcast(fd);
+    server_process_message_from(fd);
   }
 }
 
@@ -279,7 +289,7 @@ static void server_main(int argc, char **argv)
   server_init_eventset(&eset);
   server_event_register_fd(&eset.read, lfd, server_accept_client);
 
-  printf("Waiting for connection ...\n");
+  printf("Waiting for connection on port %d...\n", ntohs(saddr.sin_port));
   while (1)
     server_handle_events(&eset);
 
