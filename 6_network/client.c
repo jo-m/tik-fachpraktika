@@ -19,8 +19,6 @@
 
 #define READ_POLL_TIMEOUT_MS 100
 
-static struct eventset eset;
-
 static WINDOW *client_input_win, *client_board_win;
 
 static void client_reset_input_win(void)

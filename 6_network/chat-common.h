@@ -22,28 +22,6 @@
 #define LISTENQ   64
 #define INIT_QSIZ (100*1024)
 
-struct fdvec {
-  fd_set fds;
-  void (*f[FD_SETSIZE])(int fd);
-  int max;
-};
-
-struct client {
-  int active;
-  struct sockaddr_in sin;
-  char *outbuff;
-  size_t out_len, out_used;
-  char *inbuff;
-  size_t in_len;
-  int has_alias;
-  char alias[32];
-};
-
-struct eventset {
-  struct fdvec read;
-  struct client clients[FD_SETSIZE];
-};
-
 #ifndef min
 #define min(a, b)              \
   ({                           \

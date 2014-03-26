@@ -17,6 +17,28 @@
 #include <ncurses.h>
 #include "chat-common.h"
 
+struct fdvec {
+  fd_set fds;
+  void (*f[FD_SETSIZE])(int fd);
+  int max;
+};
+
+struct client {
+  int active;
+  struct sockaddr_in sin;
+  char *outbuff;
+  size_t out_len, out_used;
+  char *inbuff;
+  size_t in_len;
+  int has_alias;
+  char alias[32];
+};
+
+struct eventset {
+  struct fdvec read;
+  struct client clients[FD_SETSIZE];
+};
+
 static struct eventset eset;
 
 static void server_init_fdvec(struct fdvec *v)
