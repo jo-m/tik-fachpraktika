@@ -21,6 +21,9 @@
 #define  MAGIC_STR_ALIAS "\\alias "
 #define  MAGIC_STR_PRIVATE "@"
 
+#define ALIAS_MAXLEN 15
+#define ALIAS_ALLOWED_CHARS "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890_-"
+
 struct fdvec {
   fd_set fds;
   void (*f[FD_SETSIZE])(int fd);
@@ -35,7 +38,7 @@ struct client {
   char *inbuff;
   size_t in_len;
   int has_alias;
-  char alias[32];
+  char alias[ALIAS_MAXLEN + 1];
 };
 
 struct eventset {
@@ -151,11 +154,60 @@ static void server_schedule_write(int fd)
   server_flush_queued_data(fd);
 }
 
+// struct client {
+//   int active;
+//   struct sockaddr_in sin;
+//   char *outbuff;
+//   size_t out_len, out_used;
+//   char *inbuff;
+//   size_t in_len;
+//   int has_alias;
+//   char alias[32];
+// };
+
 static void server_process_alias(int fd)
 {
-  /* Message: 'alias foobar' */
-  /* Set alias to connected user */
-  /* ... */
+  int i;
+  struct client *c = &eset.clients[fd], *c2;
+  char *alias = c->inbuff + strlen(MAGIC_STR_ALIAS);
+
+  if(c->has_alias) {
+    server_write_fd_queue(fd, "<Server alias cmd>: You have already set an alias.");
+    server_schedule_write(fd);
+    return;
+  }
+
+  if(strlen(alias) > ALIAS_MAXLEN) {
+    server_write_fd_queue(fd, "<Server alias cmd>: Sorry, this alias is too long (max 32 chars).");
+    server_schedule_write(fd);
+    return;
+  }
+
+  for(i = 0; alias[i] != 0; i++) {
+    if(strchr(ALIAS_ALLOWED_CHARS, alias[i]) == NULL) {
+      server_write_fd_queue(fd, "<Server alias cmd>: Sorry, this alias contains invalid chars (allowed: a-zA-Z0-9_-).");
+      server_schedule_write(fd);
+      return;
+    }
+  }
+
+  for(i = 0; i <= eset.read.max; c2 = &eset.clients[++i]) {
+    if(FD_ISSET(i, &eset.read.fds) && c2->active && c2->has_alias && fd != i) {
+      if(0 == strnicmp(alias, c2->alias, strlen(alias))) {
+        server_write_fd_queue(fd, "<Server alias cmd>: Sorry, this alias is already in use.");
+        server_schedule_write(fd);
+        return;
+      }
+    }
+  }
+
+  c->has_alias = 1;
+  memcpy(c->alias, alias, strlen(alias) + 1);
+  server_write_fd_queue(fd, "<Server alias cmd>: OK, alias set to ");
+  server_write_fd_queue(fd, alias);
+  server_write_fd_queue(fd, ".");
+  server_schedule_write(fd);
+
 }
 
 static char* server_get_client_repr(int fd) {
