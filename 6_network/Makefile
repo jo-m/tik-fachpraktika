@@ -4,19 +4,19 @@ CFLAGS	= -Wall -O2
 all: client server
 
 client.o: client.c chat-common.h
-	$(CC) -c client.c
+	$(CC) $(CFLAGS) -c client.c
 
 server.o: server.c chat-common.h
-	$(CC) -c server.c
+	$(CC) $(CFLAGS) -c server.c
 
 chat-common.o: chat-common.c chat-common.h
-	$(CC) -c chat-common.c
+	$(CC) $(CFLAGS) -c chat-common.c
 
 client: client.o chat-common.o
 	$(CC) $(CFLAGS) -o client client.o chat-common.o -lncurses
 
 server: server.o chat-common.o
-	$(CC) $(CFLAGS) -o server server.o chat-common.o -lncurses
+	$(CC) $(CFLAGS) -static -o server server.o chat-common.o
 
 sv: server
 	./server 1337
