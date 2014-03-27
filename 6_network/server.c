@@ -20,6 +20,8 @@
 #define  MAGIC_STR_WHO "\\who"
 #define  MAGIC_STR_ALIAS "\\alias "
 #define  MAGIC_STR_PRIVATE "@"
+#define  MAGIC_STR_HELP "\\help"
+#define  MAGIC_STR_COW "\\cow"
 
 #define ALIAS_MAXLEN 15
 #define ALIAS_ALLOWED_CHARS "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890_-"
@@ -223,6 +225,49 @@ static void server_process_message_from(int fd)
   }
 }
 
+static void server_process_help(int fd)
+{
+  char *commands[] = {MAGIC_STR_WHO, MAGIC_STR_ALIAS, MAGIC_STR_PRIVATE, MAGIC_STR_HELP, MAGIC_STR_COW, 0};
+  char *desc[] = {
+    "Shows a list of all available users",
+    "Set your alias (\\alias <name>)",
+    "Private messages (@<alias> <message>)",
+    "Shows this help",
+    "Displays a cow"
+  };
+  int i;
+
+  for(i = 0; commands[i] != 0; i ++) {
+    server_write_fd_queue(fd, "<Server help cmd>: ");
+    server_write_fd_queue(fd, commands[i]);
+    server_write_fd_queue(fd, " -> ");
+    server_write_fd_queue(fd, desc[i]);
+    server_write_fd_queue(fd, "\n");
+  }
+
+  server_write_fd_queue(fd, "<Server who cmd>: -- End of List --\n");
+  server_schedule_write(fd);
+}
+
+static void server_process_cow(int fd)
+{
+  int i;
+  for (i = 0; i < FD_SETSIZE; ++i) {
+    if (eset.clients[i].active) {
+      server_write_fd_queue(i, "<Server cow cmd>: ^__^\n");
+      server_write_fd_queue(i, "<Server cow cmd>: (oo)\\_______\n");
+      server_write_fd_queue(i, "<Server cow cmd>: (__)\\       )\\/\n");
+      server_write_fd_queue(i, "<Server cow cmd>:     ||----w |\n");
+      server_write_fd_queue(i, "<Server cow cmd>:     ||     ||\n");
+
+      server_write_fd_queue(i, "<Server cow cmd>: this comes from user ");
+      server_write_fd_queue(i, server_get_client_repr(fd));
+      server_write_fd_queue(i, ".");
+      server_schedule_write(i);
+    }
+  }
+}
+
 static void server_process_who(int fd)
 {
   int i;
@@ -301,6 +346,12 @@ static void server_process_client(int fd)
   } else if (strlen(eset.clients[fd].inbuff) > strlen(MAGIC_STR_ALIAS) &&
        !strnicmp(eset.clients[fd].inbuff, MAGIC_STR_ALIAS, strlen(MAGIC_STR_ALIAS))) {
     server_process_alias(fd);
+  } else if (strlen(eset.clients[fd].inbuff) == strlen(MAGIC_STR_HELP) &&
+       !strnicmp(eset.clients[fd].inbuff, MAGIC_STR_HELP, strlen(MAGIC_STR_HELP))) {
+    server_process_help(fd);
+  } else if (strlen(eset.clients[fd].inbuff) == strlen(MAGIC_STR_COW) &&
+       !strnicmp(eset.clients[fd].inbuff, MAGIC_STR_COW, strlen(MAGIC_STR_COW))) {
+    server_process_cow(fd);
   } else if (!strncmp(eset.clients[fd].inbuff, MAGIC_STR_PRIVATE, strlen(MAGIC_STR_PRIVATE))) {
     server_process_private(fd);
   } else {
