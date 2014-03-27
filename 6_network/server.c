@@ -243,9 +243,44 @@ static void server_process_who(int fd)
 
 static void server_process_private(int fd)
 {
-  /* Message: '@foobar message' */
-  /* Send a private message, give a note that it's private */
-  /* ... */
+  int i, c_to_fd = -1;
+  struct client *c = &eset.clients[fd], *c_to = NULL;
+  char alias[ALIAS_MAXLEN + 1] = { 0 }, chr, *msg;
+
+  for(i = 0; i < ALIAS_MAXLEN; i++) {
+    chr = c->inbuff[i + strlen(MAGIC_STR_PRIVATE)];
+    if(chr == ' ' || chr == '\0')
+      break;
+    alias[i] = chr;
+    msg = &c->inbuff[i + 1 + strlen(MAGIC_STR_PRIVATE)];
+  }
+
+  for(i = 0; i <= eset.read.max; c_to = &eset.clients[++i]) {
+    if(FD_ISSET(i, &eset.read.fds) && c_to->active && c_to->has_alias && fd != i) {
+      if(0 == strnicmp(alias, c_to->alias, strlen(alias))) {
+        c_to_fd = i;
+        break;
+      }
+    }
+  }
+
+  if(c_to_fd == -1) {
+    server_write_fd_queue(fd, "<Server @ cmd>: Alias not found.");
+    server_schedule_write(fd);
+    return;
+  }
+
+  server_write_fd_queue(fd, server_get_client_repr(fd));
+  server_write_fd_queue(fd, " (-> ");
+  server_write_fd_queue(fd, server_get_client_repr(c_to_fd));
+  server_write_fd_queue(fd, "): ");
+  server_write_fd_queue(fd, msg);
+  server_schedule_write(fd);
+
+  server_write_fd_queue(c_to_fd, server_get_client_repr(fd));
+  server_write_fd_queue(c_to_fd, " [priv] :");
+  server_write_fd_queue(c_to_fd, msg);
+  server_schedule_write(c_to_fd);
 }
 
 static void server_process_client(int fd)
