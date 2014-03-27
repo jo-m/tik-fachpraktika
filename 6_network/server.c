@@ -157,7 +157,7 @@ static void server_schedule_write(int fd)
 static void server_process_alias(int fd)
 {
   int i;
-  struct client *c = &eset.clients[fd], *c2;
+  struct client *c = &eset.clients[fd], *c2 = NULL;
   char *alias = c->inbuff + strlen(MAGIC_STR_ALIAS);
 
   if(c->has_alias) {
@@ -226,7 +226,7 @@ static void server_process_message_from(int fd)
 static void server_process_who(int fd)
 {
   int i;
-  struct client *c;
+  struct client *c = NULL;
   for(i = 0; i <= eset.read.max; c = &eset.clients[++i]) {
     if(FD_ISSET(i, &eset.read.fds) && c->active) {
       server_write_fd_queue(fd, "<Server who cmd>: ");
@@ -245,7 +245,7 @@ static void server_process_private(int fd)
 {
   int i, c_to_fd = -1;
   struct client *c = &eset.clients[fd], *c_to = NULL;
-  char alias[ALIAS_MAXLEN + 1] = { 0 }, chr, *msg;
+  char alias[ALIAS_MAXLEN + 1] = { 0 }, chr = 0, *msg = NULL;
 
   for(i = 0; i < ALIAS_MAXLEN; i++) {
     chr = c->inbuff[i + strlen(MAGIC_STR_PRIVATE)];
