@@ -1,0 +1,4 @@
+#!/bin/bash
+
+LD_LIBRARY_PATH=./data ./data/perf_3.2 $1 $2 $3
+

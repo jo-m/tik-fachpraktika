@@ -1,3 +1,8 @@
+/* gcc -Wall -O2 caching.c -o caching */
+/* ./pepare_perf           */
+/* ./perf stat ./caching 0 */
+/* ./perf stat ./caching 1 */
+
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
