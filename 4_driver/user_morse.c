@@ -9,7 +9,7 @@
 #include <sys/ioctl.h>
 #include <sys/types.h>
 
-// gcc -o user_morse user_morse.c && sudo ./user_morse blah
+// gcc -o user_morse user_morse.c && sudo ./user_morse HALLO
 
 struct morse_item {
   uint8_t len;
@@ -110,16 +110,10 @@ static char validate(char ascii)
   /* Check that the input character corresponds to one that is
    * available in the morse alphabet. validate must always return
    * a vaild one! */
-  const int offset = 32;
-  int alphabet_len = sizeof(alphabet) / sizeof(uint8_t) / 2;
+  if(ascii >= ' ' && ascii <= 'Z')
+    return ascii;
 
-  if(ascii >= 97 && ascii <= 122)
-    ascii = ascii - 32;
-
-  if(ascii < offset || ascii >= offset + alphabet_len)
-    ascii = offset;
-
-  return ascii;
+  return ' ';
 }
 
 static void blink(int is_long)
@@ -134,6 +128,7 @@ static void blink(int is_long)
   else
     usleep(dot_len);
   led_off();
+  usleep(gap_code);
 }
 
 static void morse_char(char ascii)
@@ -149,6 +144,8 @@ static void morse_char(char ascii)
   ascii = validate(ascii);
   len = alphabet[ascii - 32].len;
   code = alphabet[ascii - 32].code;
+
+  printf("morse char %c: len = %d, code=%d\n", ascii, len, code);
 
   for(i = 0; i < len; i++) {
     blink(code >> (len - 1 - i) & 1);
