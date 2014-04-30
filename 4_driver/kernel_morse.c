@@ -101,30 +101,24 @@ static char validate(char ascii)
   /* Check that the input character corresponds to one that is
    * available in the morse alphabet. validate must always return
    * a vaild one! */
-  const int offset = 32;
-  int alphabet_len = sizeof(alphabet) / sizeof(uint8_t) / 2;
+  if(ascii >= ' ' && ascii <= 'Z')
+    return ascii;
 
-  if(ascii >= 97 && ascii <= 122)
-    ascii = ascii - 32;
-
-  if(ascii < offset || ascii >= offset + alphabet_len)
-    ascii = offset;
-
-  return ascii;
+  return ' ';
 }
 
 static void blink(int is_long)
 {
   /* Let the LED_NUM blink once, is_long = 1 -> it is a dash
    * is_long = 0 -> it is a dot; Use the led_on and led_off functions */
-  /* ... */
-  printf("blink(%d)\n", is_long);
+  printk("blink(%d)\n", is_long);
   led_on(LED_NUM);
   if(is_long == 1)
-    usleep(dash_len);
+    msleep(dash_len);
   else
-    usleep(dot_len);
+    msleep(dot_len);
   led_off();
+  msleep(gap_code);
 }
 
 static void morse_char(char ascii)
@@ -140,6 +134,8 @@ static void morse_char(char ascii)
   ascii = validate(ascii);
   len = alphabet[ascii - 32].len;
   code = alphabet[ascii - 32].code;
+
+  printk("morse char %c: len = %d, code=%d\n", ascii, len, code);
 
   for(i = 0; i < len; i++) {
     blink(code >> (len - 1 - i) & 1);

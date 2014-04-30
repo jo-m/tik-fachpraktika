@@ -1,1 +1,9 @@
 user_morse
+*.ko.cmd
+*.o.cmd
+*.mod.c
+*.ko
+.tmp_versions/
+Module.symvers
+modules.order
+
