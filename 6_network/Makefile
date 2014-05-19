@@ -18,8 +18,11 @@ client: client.o chat-common.o
 server: server.o chat-common.o
 	$(CC) $(CFLAGS) -static -o server server.o chat-common.o
 
-sv: server
+sv: all
 	./server 1337
+
+cl: all
+	./client localhost 1337
 
 clean:
 	rm -f client server *.o

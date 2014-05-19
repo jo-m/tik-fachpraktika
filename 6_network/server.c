@@ -21,7 +21,7 @@
 #define  MAGIC_STR_ALIAS "\\alias "
 #define  MAGIC_STR_PRIVATE "@"
 #define  MAGIC_STR_HELP "\\help"
-#define  MAGIC_STR_COW "\\cow"
+#define  MAGIC_STR_COW "\\cow "
 
 #define ALIAS_MAXLEN 15
 #define ALIAS_ALLOWED_CHARS "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890_-"
@@ -233,7 +233,7 @@ static void server_process_help(int fd)
     "Set your alias (\\alias <name>)",
     "Private messages (@<alias> <message>)",
     "Shows this help",
-    "Displays a cow"
+    "Invoke Cowsay (\\cowsay <message>)"
   };
   int i;
 
@@ -252,20 +252,40 @@ static void server_process_help(int fd)
 static void server_process_cow(int fd)
 {
   int i;
-  for (i = 0; i < FD_SETSIZE; ++i) {
-    if (eset.clients[i].active) {
-      server_write_fd_queue(i, "<Server cow cmd>: ^__^\n");
-      server_write_fd_queue(i, "<Server cow cmd>: (oo)\\_______\n");
-      server_write_fd_queue(i, "<Server cow cmd>: (__)\\       )\\/\n");
-      server_write_fd_queue(i, "<Server cow cmd>:     ||----w |\n");
-      server_write_fd_queue(i, "<Server cow cmd>:     ||     ||\n");
+  struct client *c = &eset.clients[fd], *c2 = NULL;
+  char *msg = c->inbuff + strlen(MAGIC_STR_COW);
+  char cowsay[] = "cowsay ";
+  char *cmd = malloc(sizeof(char) * (strlen(cowsay) + strlen(msg) + 2));
+  #define RESULT_BUFLEN (1024 * 8)
+  char result[RESULT_BUFLEN + 1] = {0};
+  int read_b;
 
-      server_write_fd_queue(i, "<Server cow cmd>: this comes from user ");
-      server_write_fd_queue(i, server_get_client_repr(fd));
-      server_write_fd_queue(i, ".");
-      server_schedule_write(i);
+  memset(cmd, 0, sizeof(char) * (strlen(cowsay) + strlen(msg) + 2));
+  memcpy(cmd, cowsay, strlen(cowsay));
+  memcpy(cmd + strlen(cowsay), msg, strlen(msg));
+
+  FILE *proc = popen(cmd, "r");
+
+  read_b = fread(result, 1, RESULT_BUFLEN, proc);
+
+  if(read_b > 0) {
+    for (i = 0; i < FD_SETSIZE; ++i) {
+      if (eset.clients[i].active) {
+        server_write_fd_queue(i, "<Server cowsay cmd>:\n");
+        server_write_fd_queue(i, result);
+        server_write_fd_queue(i, "<Server cowsay cmd>: this comes from user ");
+        server_write_fd_queue(i, server_get_client_repr(fd));
+        server_write_fd_queue(i, ".\n");
+        server_schedule_write(i);
+      }
     }
+  } else {
+    server_write_fd_queue(fd, "<Server cowsay cmd>: 'cowsay' command not installed on server!\n");
+    server_schedule_write(fd);
   }
+
+  fclose(proc);
+  free(cmd);
 }
 
 static void server_process_who(int fd)
@@ -349,7 +369,7 @@ static void server_process_client(int fd)
   } else if (strlen(eset.clients[fd].inbuff) == strlen(MAGIC_STR_HELP) &&
        !strnicmp(eset.clients[fd].inbuff, MAGIC_STR_HELP, strlen(MAGIC_STR_HELP))) {
     server_process_help(fd);
-  } else if (strlen(eset.clients[fd].inbuff) == strlen(MAGIC_STR_COW) &&
+  } else if (strlen(eset.clients[fd].inbuff) > strlen(MAGIC_STR_COW) &&
        !strnicmp(eset.clients[fd].inbuff, MAGIC_STR_COW, strlen(MAGIC_STR_COW))) {
     server_process_cow(fd);
   } else if (!strncmp(eset.clients[fd].inbuff, MAGIC_STR_PRIVATE, strlen(MAGIC_STR_PRIVATE))) {
@@ -388,6 +408,7 @@ static void server_accept_client(int lfd)
   server_event_register_fd(&eset.read, nfd, server_process_client);
 
   server_write_fd_queue(nfd, "Hello from server!\n");
+  server_write_fd_queue(nfd, "Enter '\\help' for a list of commands.\n");
   server_schedule_write(nfd);
 
   printf("Client %s registered!\n", inet_ntoa(caddr.sin_addr));
